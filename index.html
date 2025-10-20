@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teachable Machine - Cargar Imágenes</title>
+  <style>
+    body {
+      background-color: #f4f9f4;
+      font-family: "Poppins", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      color: #2e7d32;
+    }
+
+    /* 🔹 Contenedor del logo */
+    header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px 20px;
+      box-sizing: border-box;
+    }
+
+    header img {
+      height: 50px;
+      width: auto;
+    }
+
+    h1 {
+      color: #ff6f00;
+      margin-bottom: 20px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    label {
+      background-color: #2e7d32;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    label:hover {
+      background-color: #388e3c;
+    }
+
+    #image-container {
+      margin-top: 20px;
+      border: 3px solid #ff6f00;
+      border-radius: 12px;
+      overflow: hidden;
+      width: 200px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #fff;
+    }
+
+    #image-preview {
+      max-width: 100%;
+      max-height: 100%;
+      display: none;
+    }
+
+    #label-container {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 18px;
+      width: 250px;
+    }
+
+    #label-container div {
+      background: #e8f5e9;
+      border-radius: 6px;
+      padding: 8px;
+      margin: 4px 0;
+      transition: all 0.3s ease;
+    }
+
+    #label-container div.winner {
+      background-color: #2e7d32;
+      color: white;
+      font-weight: bold;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <!-- 🔹 Logo -->
+  <header>
+    <img src="logo.png" alt="Logo" />
+  </header>
+
+  <h1>Teachable Machine Image Model</h1>
+
+  <label for="image-input">Seleccionar imagen</label>
+  <input type="file" id="image-input" accept="image/*" />
+
+  <div id="image-container">
+    <img id="image-preview" />
+  </div>
+  <div id="label-container"></div>
+
+  <!-- TensorFlow.js y Teachable Machine -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <script>
+    const MODEL_URL = "./my_model/";
+    let model, labelContainer, maxPredictions;
+
+    async function loadModel() {
+      const modelURL = MODEL_URL + "model.json";
+      const metadataURL = MODEL_URL + "metadata.json";
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+      labelContainer = document.getElementById("label-container");
+      labelContainer.innerHTML = "";
+      for (let i = 0; i < maxPredictions; i++) {
+        const div = document.createElement("div");
+        labelContainer.appendChild(div);
+      }
+    }
+
+    async function predictImage(imageElement) {
+      const prediction = await model.predict(imageElement);
+
+      // Ordenar para encontrar el valor más alto
+      const sorted = [...prediction].sort((a, b) => b.probability - a.probability);
+      const winnerClass = sorted[0].className;
+
+      for (let i = 0; i < maxPredictions; i++) {
+        const className = prediction[i].className;
+        const percentage = (prediction[i].probability * 100).toFixed(0) + "%";
+        const div = labelContainer.childNodes[i];
+        div.innerHTML = `${className}: ${percentage}`;
+        div.classList.toggle("winner", className === winnerClass);
+      }
+    }
+
+    document.getElementById("image-input").addEventListener("change", async (event) => {
+      if (!model) await loadModel();
+
+      const file = event.target.files[0];
+      if (file) {
+        const img = document.getElementById("image-preview");
+        img.src = window.URL.createObjectURL(file);
+        img.style.display = "block";
+
+        img.onload = async () => {
+          await predictImage(img);
+          window.URL.revokeObjectURL(img.src);
+        };
+      }
+    });
+  </script>
+</body>
+</html>
